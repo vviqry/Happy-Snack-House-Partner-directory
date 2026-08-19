@@ -81,7 +81,7 @@ export default function PublicDirectory(_props: Props) {
             />
           </div>
           <h1 className="hero-title">
-            Lagi Cari Fruity Candy? <span className="candy-bounce">🍬</span>
+            Camilan Favoritmu Ada di Sini <span className="candy-bounce">🍬</span>
           </h1>
           <p className="hero-subtitle">
             Temukan toko & warung terdekat yang menyediakan camilan Happy Snack House.
