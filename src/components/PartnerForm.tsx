@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { Partner, PartnerDraft } from '../types/partner'
 import type { Product } from '../types/product'
-import { subscribeToProducts, addProduct, deleteProduct } from '../services/productService'
+import {
+  subscribeToProducts,
+  addProduct,
+  deleteProduct,
+  getActiveProducts,
+  getProductById,
+} from '../services/productService'
 
 interface Props {
   initial?: Partner
@@ -10,7 +16,7 @@ interface Props {
 }
 
 export default function PartnerForm({ initial, onSave, onClose }: Props) {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<Product[]>(() => getActiveProducts())
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [newProductName, setNewProductName] = useState('')
   const [addingProduct, setAddingProduct] = useState(false)
@@ -20,29 +26,74 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
   const [address, setAddress] = useState(initial?.address ?? '')
   const [mapsUrl, setMapsUrl] = useState(initial?.mapsUrl ?? '')
   const [image, setImage] = useState(initial?.image ?? '')
+
+  // Initialize stock and selected map, resolving legacy product IDs
   const [stockByProduct, setStockByProduct] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {}
-    for (const p of initial?.products ?? []) map[p.productId] = p.stock
+    for (const p of initial?.products ?? []) {
+      const resolved = getProductById(p.productId)
+      const targetId = resolved ? resolved.id : p.productId
+      map[targetId] = Math.max(0, Number(p.stock) || 0)
+    }
     return map
   })
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set((initial?.products ?? []).map((p) => p.productId))
-  )
+
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const set = new Set<string>()
+    for (const p of initial?.products ?? []) {
+      const resolved = getProductById(p.productId)
+      const targetId = resolved ? resolved.id : p.productId
+      if (p.stock > 0) {
+        set.add(targetId)
+      }
+    }
+    return set
+  })
+
   const [error, setError] = useState('')
 
   // Subscribe to products from Firestore
   useEffect(() => {
     const unsubscribe = subscribeToProducts((list) => {
-      setProducts(list.filter((p) => p.active))
+      const activeList = list.filter((p) => p.active)
+      setProducts(activeList)
+
+      // Sync initial data if any legacy ID needs matching to newly loaded active products
+      if (initial?.products) {
+        setStockByProduct((prev) => {
+          const next = { ...prev }
+          for (const item of initial.products) {
+            const resolved = getProductById(item.productId)
+            if (resolved) {
+              if (next[resolved.id] === undefined) {
+                next[resolved.id] = Math.max(0, Number(item.stock) || 0)
+              }
+            }
+          }
+          return next
+        })
+
+        setSelected((prev) => {
+          const next = new Set(prev)
+          for (const item of initial.products) {
+            const resolved = getProductById(item.productId)
+            if (resolved && item.stock > 0) {
+              next.add(resolved.id)
+            }
+          }
+          return next
+        })
+      }
     })
     return () => unsubscribe()
-  }, [])
+  }, [initial])
 
   function toggleProduct(id: string) {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
+        setStockByProduct((s) => ({ ...s, [id]: 0 }))
       } else {
         next.add(id)
         if (!(id in stockByProduct)) {
@@ -61,7 +112,9 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
     if (!newProductName.trim()) return
     setAddingProduct(true)
     try {
-      await addProduct(newProductName.trim())
+      const newId = await addProduct(newProductName.trim())
+      setSelected((prev) => new Set(prev).add(newId))
+      setStockByProduct((prev) => ({ ...prev, [newId]: 0 }))
       setNewProductName('')
       setShowAddProduct(false)
     } catch (err) {
@@ -108,6 +161,14 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
       return
     }
 
+    const validProductIds = new Set(products.map((p) => p.id))
+    const validProducts = Array.from(selected)
+      .filter((productId) => validProductIds.has(productId))
+      .map((productId) => ({
+        productId,
+        stock: Math.max(0, Number(stockByProduct[productId]) || 0),
+      }))
+
     const draft: PartnerDraft = {
       name: name.trim(),
       area: area.trim(),
@@ -115,10 +176,7 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
       mapsUrl: mapsUrl.trim(),
       image: image.trim(),
       active: initial?.active ?? true,
-      products: Array.from(selected).map((productId) => ({
-        productId,
-        stock: stockByProduct[productId] ?? 0,
-      })),
+      products: validProducts,
     }
     onSave(draft)
   }

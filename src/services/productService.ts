@@ -4,6 +4,7 @@ import {
   collection,
   getDocs,
   addDoc,
+  setDoc,
   deleteDoc,
   doc,
   onSnapshot,
@@ -81,8 +82,8 @@ export async function seedProducts(): Promise<void> {
     const snapshot = await getDocs(collection(db, COLLECTION_NAME))
     if (!snapshot.empty) return
     for (const product of MASTER_PRODUCTS) {
-      const { id: _, ...data } = product
-      await addDoc(collection(db, COLLECTION_NAME), data)
+      const { id, ...data } = product
+      await setDoc(doc(db, COLLECTION_NAME, id), data)
     }
   } catch (err) {
     console.error('Error seeding products:', err)
@@ -95,5 +96,35 @@ export function getActiveProducts(): Product[] {
 }
 
 export function getProductById(id: string): Product | undefined {
-  return cachedProducts.find((p) => p.id === id)
+  if (!id) return undefined
+
+  // 1. Direct match by id in cache
+  const found = cachedProducts.find((p) => p.id === id)
+  if (found) return found
+
+  // 2. Direct match in MASTER_PRODUCTS
+  const masterFound = MASTER_PRODUCTS.find((p) => p.id === id)
+  if (masterFound) {
+    // If master product found, prefer matching cached product with same name if available
+    const matchInCache = cachedProducts.find(
+      (p) => p.name.trim().toLowerCase() === masterFound.name.trim().toLowerCase()
+    )
+    return matchInCache || masterFound
+  }
+
+  // 3. Fallback: match by normalized name or slug (e.g. 'fruity-candy' vs 'Fruity Candy')
+  const normalizedId = id.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const byNormalizedCache = cachedProducts.find((p) => {
+    const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const normId = p.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+    return normName === normalizedId || normId === normalizedId
+  })
+  if (byNormalizedCache) return byNormalizedCache
+
+  return MASTER_PRODUCTS.find((p) => {
+    const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const normId = p.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+    return normName === normalizedId || normId === normalizedId
+  })
 }
+

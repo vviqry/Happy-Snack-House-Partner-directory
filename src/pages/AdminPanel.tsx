@@ -9,6 +9,7 @@ import {
   setPartnerActive,
   subscribeToPartners,
   totalStock,
+  sanitizePartnerProducts,
   updatePartner,
   seedInitialPartners,
 } from '../services/partnerService'
@@ -65,9 +66,18 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
 
   async function handleStockChange(partner: Partner, productId: string, delta: number) {
     try {
-      const nextProducts = (partner.products || []).map((p) =>
-        p.productId === productId ? { ...p, stock: Math.max(0, p.stock + delta) } : p
-      )
+      const currentList = sanitizePartnerProducts(partner.products)
+      let matched = false
+      const nextProducts = currentList.map((p) => {
+        if (p.productId === productId) {
+          matched = true
+          return { ...p, stock: Math.max(0, p.stock + delta) }
+        }
+        return p
+      })
+      if (!matched && delta > 0) {
+        nextProducts.push({ productId, stock: delta })
+      }
       await updatePartner(partner.id, { products: nextProducts })
     } catch (err) {
       console.error('Gagal update stok:', err)

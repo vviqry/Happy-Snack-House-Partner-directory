@@ -6,24 +6,37 @@ interface Props {
 }
 
 export default function ProductStockList({ partner }: Props) {
-  const inStock = (partner.products || [])
-    .filter((p) => p.stock > 0)
-    .map((p) => ({ ...p, product: getProductById(p.productId) }))
-    .filter((p) => p.product)
+  const productMap = new Map<string, { name: string; stock: number }>()
 
-  if (inStock.length === 0) {
+  for (const item of partner.products || []) {
+    if (!item || item.stock <= 0) continue
+    const product = getProductById(item.productId)
+    if (!product) continue
+
+    const existing = productMap.get(product.id)
+    if (existing) {
+      existing.stock = Math.max(existing.stock, item.stock)
+    } else {
+      productMap.set(product.id, { name: product.name, stock: item.stock })
+    }
+  }
+
+  const items = Array.from(productMap.entries())
+
+  if (items.length === 0) {
     return <p className="field-hint">Belum ada stok produk saat ini.</p>
   }
 
   return (
     <div className="toples-panel">
-      {inStock.map((item) => (
-        <div className="toples-row" key={item.productId}>
+      {items.map(([productId, item]) => (
+        <div className="toples-row" key={productId}>
           <span className="toples-thumb" aria-hidden="true">🍬</span>
-          <span className="toples-name">{item.product!.name}</span>
+          <span className="toples-name">{item.name}</span>
           <span className="toples-count"><strong>{item.stock}</strong> Toples</span>
         </div>
       ))}
     </div>
   )
 }
+
