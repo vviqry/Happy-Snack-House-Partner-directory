@@ -191,10 +191,11 @@ button {
 }
 
 .hero-logo {
-  width: 180px;
+  width: 220px;
+  max-width: 85vw;
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(180, 110, 0, 0.2));
+  filter: drop-shadow(0 8px 20px rgba(180, 110, 0, 0.18));
   animation: logo-float 3.5s ease-in-out infinite alternate;
 }
 
@@ -1088,6 +1089,30 @@ button {
   font-size: 0.78rem;
   color: var(--brand-brown-muted);
   white-space: nowrap;
+}
+
+.product-delete-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+  flex-shrink: 0;
+  border: 1px solid #fca5a5;
+  cursor: pointer;
+}
+
+.product-delete-badge:hover {
+  background: #dc2626;
+  color: #ffffff;
+  transform: scale(1.1);
 }
 
 /* Add Product inline form */

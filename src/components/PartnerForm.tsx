@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Partner, PartnerDraft } from '../types/partner'
 import type { Product } from '../types/product'
-import { subscribeToProducts, addProduct } from '../services/productService'
+import { subscribeToProducts, addProduct, deleteProduct } from '../services/productService'
 
 interface Props {
   initial?: Partner
@@ -69,6 +69,27 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
       alert('Gagal menambahkan produk baru.')
     } finally {
       setAddingProduct(false)
+    }
+  }
+
+  async function handleDeleteProduct(e: React.MouseEvent, productId: string, productName: string) {
+    e.stopPropagation()
+    if (window.confirm(`Hapus produk "${productName}" dari database?`)) {
+      try {
+        await deleteProduct(productId)
+        setSelected((prev) => {
+          const next = new Set(prev)
+          next.delete(productId)
+          return next
+        })
+        setStockByProduct((prev) => {
+          const next = { ...prev }
+          delete next[productId]
+          return next
+        })
+      } catch (err) {
+        console.error('Gagal menghapus produk:', err)
+      }
     }
   }
 
@@ -190,6 +211,15 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
                         className="stock-num-input"
                       />
                       <span className="stock-unit">Toples</span>
+                      <button
+                        type="button"
+                        className="product-delete-badge"
+                        onClick={(e) => handleDeleteProduct(e, p.id, p.name)}
+                        title={`Hapus produk "${p.name}"`}
+                        aria-label={`Hapus produk ${p.name}`}
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 )

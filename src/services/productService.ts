@@ -4,6 +4,8 @@ import {
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
+  doc,
   onSnapshot,
   query,
   orderBy,
@@ -13,7 +15,6 @@ import { db } from '../firebase'
 const COLLECTION_NAME = 'products'
 
 // In-memory cache so synchronous getProductById/getActiveProducts still work
-// while Firestore loads. Initialised with the hardcoded seed list.
 let cachedProducts: Product[] = [...MASTER_PRODUCTS]
 
 // Subscribe to Firestore products collection (real-time)
@@ -23,7 +24,6 @@ export function subscribeToProducts(callback?: (products: Product[]) => void) {
     q,
     (snapshot) => {
       if (snapshot.empty) {
-        // Firestore empty — keep using MASTER_PRODUCTS seed
         cachedProducts = [...MASTER_PRODUCTS]
       } else {
         cachedProducts = snapshot.docs.map((docSnap) => ({
@@ -41,12 +41,17 @@ export function subscribeToProducts(callback?: (products: Product[]) => void) {
 
 // Fetch once
 export async function fetchProducts(): Promise<Product[]> {
-  const snapshot = await getDocs(collection(db, COLLECTION_NAME))
-  if (snapshot.empty) return [...MASTER_PRODUCTS]
-  return snapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...(docSnap.data() as Omit<Product, 'id'>),
-  }))
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTION_NAME))
+    if (snapshot.empty) return [...MASTER_PRODUCTS]
+    return snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...(docSnap.data() as Omit<Product, 'id'>),
+    }))
+  } catch (err) {
+    console.error('Error fetching products:', err)
+    return cachedProducts
+  }
 }
 
 // Add a new product to Firestore
@@ -59,13 +64,28 @@ export async function addProduct(name: string, image?: string): Promise<string> 
   return docRef.id
 }
 
+// Delete a product from Firestore
+export async function deleteProduct(id: string): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id)
+    await deleteDoc(docRef)
+  } catch (err) {
+    console.error('Error deleting product from Firestore:', err)
+  }
+  cachedProducts = cachedProducts.filter((p) => p.id !== id)
+}
+
 // Seed products to Firestore if collection is empty
 export async function seedProducts(): Promise<void> {
-  const snapshot = await getDocs(collection(db, COLLECTION_NAME))
-  if (!snapshot.empty) return
-  for (const product of MASTER_PRODUCTS) {
-    const { id: _, ...data } = product
-    await addDoc(collection(db, COLLECTION_NAME), data)
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTION_NAME))
+    if (!snapshot.empty) return
+    for (const product of MASTER_PRODUCTS) {
+      const { id: _, ...data } = product
+      await addDoc(collection(db, COLLECTION_NAME), data)
+    }
+  } catch (err) {
+    console.error('Error seeding products:', err)
   }
 }
 

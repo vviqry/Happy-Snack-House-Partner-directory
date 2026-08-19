@@ -71,11 +71,11 @@ export default function PublicDirectory(_props: Props) {
       </header>
 
       <main className="container">
-        {/* Hero — customer-facing with brand logo */}
+        {/* Hero — customer-facing with authentic transparent Logo.png */}
         <section className="hero-section">
           <div className="logo-wrapper">
             <img
-              src="/assets/logo.jpg"
+              src="/Logo.png"
               alt="Happy Snack House"
               className="hero-logo"
             />
