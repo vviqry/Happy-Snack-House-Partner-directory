@@ -1,77 +1,99 @@
-import type { Partner, PartnerDraft } from '../types/partner'
-import { SEED_PARTNERS } from '../data/seed'
-import { readJSON, writeJSON } from './storageService'
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  onSnapshot, 
+  query, 
+  orderBy 
+} from "firebase/firestore";
+import { db } from "../firebase";
+import type { Partner, PartnerDraft } from "../types/partner";
+import { SEED_PARTNERS } from "../data/seed";
 
-const KEY = 'partners'
+const COLLECTION_NAME = "partners";
 
-function loadAll(): Partner[] {
-  return readJSON<Partner[]>(KEY, SEED_PARTNERS)
-}
-
-function saveAll(partners: Partner[]): void {
-  writeJSON(KEY, partners)
-}
-
-function genId(name: string): string {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-  const suffix = Math.random().toString(36).slice(2, 6)
-  return `${base || 'mitra'}-${suffix}`
-}
-
-// Total toples is always derived from product stock — never stored as a
-// separate number — so it can never drift out of sync.
+// Total toples is always derived from product stock — never stored as a separate number
 export function totalStock(partner: Partner): number {
-  return partner.products.reduce((sum, p) => sum + Math.max(0, p.stock), 0)
+  if (!partner.products || !Array.isArray(partner.products)) return 0;
+  return partner.products.reduce((sum, p) => sum + Math.max(0, p.stock), 0);
 }
 
-export function getAllPartners(): Partner[] {
-  return loadAll()
-}
+// 1. Ambil data secara Real-time (Otomatis update kalau ada perubahan)
+export const subscribeToPartners = (callback: (partners: Partner[]) => void) => {
+  const q = query(collection(db, COLLECTION_NAME), orderBy("name", "asc"));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const data: Partner[] = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...(docSnap.data() as Omit<Partner, "id">),
+      }));
+      callback(data);
+    },
+    (error) => {
+      console.error("Firestore subscription error:", error);
+    }
+  );
+};
 
-// What the public directory is allowed to see: active partners that have
-// at least one product in stock.
-export function getVisiblePartners(): Partner[] {
-  return loadAll()
-    .filter((p) => p.active && totalStock(p) > 0)
-    .sort((a, b) => a.createdAt - b.createdAt)
-}
+// 2. Ambil data sekali saja (Fetch biasa)
+export const fetchPartners = async (): Promise<Partner[]> => {
+  const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...(docSnap.data() as Omit<Partner, "id">),
+  }));
+};
 
-export function getPartnerById(id: string): Partner | undefined {
-  return loadAll().find((p) => p.id === id)
-}
+// 3. Tambah Partner Baru
+export const addPartner = async (partnerData: Omit<Partner, "id">) => {
+  const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+    ...partnerData,
+    createdAt: partnerData.createdAt || Date.now(),
+  });
+  return docRef.id;
+};
 
-export function createPartner(draft: PartnerDraft): Partner {
-  const partners = loadAll()
-  const partner: Partner = {
+export const createPartner = async (draft: PartnerDraft) => {
+  return addPartner({
     ...draft,
-    id: genId(draft.name),
     createdAt: Date.now(),
+  });
+};
+
+// 4. Update Data Partner / Stok
+export const updatePartner = async (id: string, updatedData: Partial<Partner>) => {
+  const partnerDoc = doc(db, COLLECTION_NAME, id);
+  const { id: _, ...dataToUpdate } = updatedData as Partner;
+  await updateDoc(partnerDoc, dataToUpdate);
+};
+
+// 5. Toggle Aktif/Nonaktif
+export const setPartnerActive = async (id: string, active: boolean) => {
+  await updatePartner(id, { active });
+};
+
+// 6. Hapus Partner
+export const deletePartner = async (id: string) => {
+  const partnerDoc = doc(db, COLLECTION_NAME, id);
+  await deleteDoc(partnerDoc);
+};
+
+// 7. Seed data awal jika Firestore masih kosong
+export const seedInitialPartners = async () => {
+  try {
+    const existing = await fetchPartners();
+    if (existing.length === 0) {
+      for (const partner of SEED_PARTNERS) {
+        const { id: _, ...partnerData } = partner;
+        await addDoc(collection(db, COLLECTION_NAME), partnerData);
+      }
+      console.log("Initial seed data added to Firestore");
+    }
+  } catch (err) {
+    console.error("Error seeding initial partners:", err);
   }
-  saveAll([...partners, partner])
-  return partner
-}
-
-export function updatePartner(id: string, draft: PartnerDraft): Partner | undefined {
-  const partners = loadAll()
-  const idx = partners.findIndex((p) => p.id === id)
-  if (idx === -1) return undefined
-  const updated: Partner = { ...partners[idx], ...draft }
-  const next = [...partners]
-  next[idx] = updated
-  saveAll(next)
-  return updated
-}
-
-export function setPartnerActive(id: string, active: boolean): void {
-  const partners = loadAll()
-  saveAll(partners.map((p) => (p.id === id ? { ...p, active } : p)))
-}
-
-export function deletePartner(id: string): void {
-  const partners = loadAll()
-  saveAll(partners.filter((p) => p.id !== id))
-}
+};
