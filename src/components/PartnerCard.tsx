@@ -10,14 +10,20 @@ export default function PartnerCard({ partner, onOpen }: Props) {
   const stock = totalStock(partner)
 
   return (
-    <li>
+    <li className="partner-item">
       <button className="partner-card" onClick={() => onOpen(partner)}>
+        <div className="partner-card-icon-box">
+          <span className="partner-card-icon" aria-hidden="true">🏠</span>
+        </div>
         <div className="partner-card-body">
-          <p className="partner-card-name">{partner.name}</p>
+          <h3 className="partner-card-name">{partner.name}</h3>
           <p className="partner-card-area">📍 {partner.area}</p>
         </div>
-        <div className="stock-badge" aria-label={`${stock} toples tersedia`}>
-          {stock}
+        <div className="partner-card-right">
+          <span className="stock-badge" aria-label={`${stock} toples tersedia`}>
+            🍬 {stock} toples
+          </span>
+          <span className="card-arrow" aria-hidden="true">›</span>
         </div>
       </button>
     </li>

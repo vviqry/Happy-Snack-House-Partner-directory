@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function PartnerModal({ partner, onClose }: Props) {
-  const [toplesOpen, setToplesOpen] = useState(false)
+  const [toplesOpen, setToplesOpen] = useState(true)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -27,36 +27,37 @@ export default function PartnerModal({ partner, onClose }: Props) {
         aria-label={partner.name}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-close">
-          <button className="icon-btn" onClick={onClose} aria-label="Tutup">
+        <div className="modal-header-row">
+          <div className="modal-badge-icon" aria-hidden="true">🏠</div>
+          <button className="icon-btn-close" onClick={onClose} aria-label="Tutup">
             ✕
           </button>
         </div>
 
         <h2 className="modal-title">{partner.name}</h2>
         <p className="modal-area">📍 {partner.area}</p>
+        {partner.address && <p className="modal-address">{partner.address}</p>}
 
         <div className="modal-actions">
-          <a
-            className="action-btn"
-            href={partner.mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span className="action-icon" aria-hidden="true">
-              📍
-            </span>
-            Lokasi
-          </a>
+          {partner.mapsUrl && (
+            <a
+              className="action-btn-primary"
+              href={partner.mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="action-icon" aria-hidden="true">📍</span>
+              Buka Google Maps
+            </a>
+          )}
           <button
-            className={`action-btn${toplesOpen ? ' is-open' : ''}`}
+            type="button"
+            className={`action-btn-secondary${toplesOpen ? ' is-active' : ''}`}
             onClick={() => setToplesOpen((v) => !v)}
             aria-expanded={toplesOpen}
           >
-            <span className="action-icon" aria-hidden="true">
-              📦
-            </span>
-            Toples
+            <span className="action-icon" aria-hidden="true">📦</span>
+            {toplesOpen ? 'Sembunyikan Stok' : 'Lihat Stok Toples'}
           </button>
         </div>
 

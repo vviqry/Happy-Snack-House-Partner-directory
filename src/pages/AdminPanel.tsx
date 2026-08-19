@@ -52,13 +52,13 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
       setEditing(null)
     } catch (err) {
       console.error('Gagal menyimpan partner:', err)
-      alert('Gagal menyimpan ke server Firestore. Pastikan Firestore rules sudah aktif.')
+      alert('Gagal menyimpan ke server Firestore.')
     }
   }
 
   async function handleStockChange(partner: Partner, productId: string, delta: number) {
     try {
-      const nextProducts = partner.products.map((p) =>
+      const nextProducts = (partner.products || []).map((p) =>
         p.productId === productId ? { ...p, stock: Math.max(0, p.stock + delta) } : p
       )
       await updatePartner(partner.id, { products: nextProducts })
@@ -101,76 +101,95 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
   }
 
   return (
-    <div className="app-shell">
-      <div className="container">
-        <div className="admin-topbar">
-          <span className="admin-topbar-title">
-            <span className="dot" aria-hidden="true" />
-            Admin Mode (Cloud Firestore)
-          </span>
-          <button className="chip-btn" onClick={handleLogout}>
-            Logout
+    <div className="app-shell brand-theme admin-view">
+      {/* Top Banner */}
+      <header className="top-nav-banner">
+        <div className="top-nav-content">
+          <div className="brand-logo-badge">
+            <span className="brand-icon">🏠</span>
+            <span className="brand-title">
+              <strong>Happy Snack House</strong> — Admin Mode
+            </span>
+          </div>
+          <button className="top-nav-logout-btn" onClick={handleLogout}>
+            Keluar Mode Admin
           </button>
         </div>
+      </header>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+      <main className="container">
+        <div className="admin-header-row">
+          <div>
+            <h1 className="admin-page-title">Kelola Mitra & Stok</h1>
+            <p className="admin-page-sub">
+              Tersambung ke Cloud Firestore Database (Real-time)
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-actions-bar">
           <button
-            className="btn-add"
-            style={{ flex: 1 }}
+            className="action-btn-primary"
             onClick={() => {
               setEditing(null)
               setFormOpen(true)
             }}
           >
-            + Tambah Mitra
+            <span>+</span> Tambah Mitra Baru
           </button>
+
           {partners.length === 0 && !loading && (
             <button
-              className="chip-btn"
+              className="action-btn-secondary"
               onClick={handleSeedData}
               disabled={seeding}
-              style={{ whiteSpace: 'nowrap' }}
             >
-              {seeding ? 'Memuat...' : '🌱 Isi Data Awal'}
+              {seeding ? 'Memuat...' : '🌱 Isi Data Awal (Seed)'}
             </button>
           )}
         </div>
 
         {loading ? (
-          <div className="state-block">
+          <div className="state-card">
+            <div className="loading-spinner" />
             <p>Menghubungkan ke Firestore database...</p>
           </div>
         ) : partners.length === 0 ? (
-          <div className="state-block">
+          <div className="state-card empty">
             <span className="state-emoji" aria-hidden="true">
               🗂️
             </span>
-            <p>Belum ada mitra di database Firestore. Tambahkan mitra pertama atau klik "Isi Data Awal".</p>
+            <h3>Belum Ada Mitra di Database</h3>
+            <p>Klik tombol "+ Tambah Mitra Baru" atau "🌱 Isi Data Awal" untuk mulai.</p>
           </div>
         ) : (
-          <ul className="admin-list">
+          <ul className="admin-cards-list">
             {partners.map((partner) => {
               const expanded = expandedId === partner.id
+              const stock = totalStock(partner)
               return (
-                <li className="admin-row" key={partner.id}>
-                  <div className="admin-row-top">
-                    <div>
-                      <p className="admin-row-name">{partner.name}</p>
-                      <p className="admin-row-area">
-                        {partner.area} · {totalStock(partner)} toples
-                      </p>
+                <li className="admin-partner-card" key={partner.id}>
+                  <div className="admin-card-header">
+                    <div className="admin-card-info">
+                      <div className="admin-card-icon-box">🏠</div>
+                      <div>
+                        <h3 className="admin-card-name">{partner.name}</h3>
+                        <p className="admin-card-meta">
+                          📍 {partner.area} · <span className="stock-highlight">{stock} toples</span>
+                        </p>
+                      </div>
                     </div>
                     <span className={`status-pill ${partner.active ? 'active' : 'inactive'}`}>
                       {partner.active ? 'Aktif' : 'Nonaktif'}
                     </span>
                   </div>
 
-                  <div className="admin-row-actions">
+                  <div className="admin-card-buttons">
                     <button
-                      className="chip-btn"
+                      className={`chip-btn ${expanded ? 'is-active' : ''}`}
                       onClick={() => setExpandedId(expanded ? null : partner.id)}
                     >
-                      {expanded ? 'Tutup Stok' : 'Kelola Stok'}
+                      📦 {expanded ? 'Tutup Stok' : 'Kelola Stok'}
                     </button>
                     <button
                       className="chip-btn"
@@ -179,53 +198,58 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
                         setFormOpen(true)
                       }}
                     >
-                      Edit
+                      ✏️ Edit
                     </button>
                     <button
                       className="chip-btn"
                       onClick={() => handleToggleActive(partner)}
                     >
-                      {partner.active ? 'Nonaktifkan' : 'Aktifkan'}
+                      {partner.active ? '⏸️ Nonaktifkan' : '▶️ Aktifkan'}
                     </button>
                     <button
                       className="chip-btn danger"
                       onClick={() => setConfirmDeleteId(partner.id)}
                     >
-                      Hapus
+                      🗑️ Hapus
                     </button>
                   </div>
 
                   {expanded && (
                     <div className="admin-stock-editor">
+                      <div className="stock-editor-header">
+                        <h4>Stok Toples per Produk:</h4>
+                      </div>
                       {(!partner.products || partner.products.length === 0) && (
-                        <p className="field-hint">Belum ada produk. Klik Edit untuk menambahkan.</p>
+                        <p className="field-hint">Belum ada produk. Klik Edit untuk menambahkan produk.</p>
                       )}
-                      {partner.products?.map((ps) => {
-                        const product = getProductById(ps.productId)
-                        if (!product) return null
-                        return (
-                          <div className="stock-editor-row" key={ps.productId}>
-                            <label>{product.name}</label>
-                            <div className="stepper">
-                              <button
-                                type="button"
-                                onClick={() => handleStockChange(partner, ps.productId, -1)}
-                                aria-label={`Kurangi stok ${product.name}`}
-                              >
-                                −
-                              </button>
-                              <span>{ps.stock}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleStockChange(partner, ps.productId, 1)}
-                                aria-label={`Tambah stok ${product.name}`}
-                              >
-                                +
-                              </button>
+                      <div className="stock-editor-grid">
+                        {partner.products?.map((ps) => {
+                          const product = getProductById(ps.productId)
+                          if (!product) return null
+                          return (
+                            <div className="stock-editor-item" key={ps.productId}>
+                              <span className="stock-product-name">{product.name}</span>
+                              <div className="stepper">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStockChange(partner, ps.productId, -1)}
+                                  aria-label={`Kurangi stok ${product.name}`}
+                                >
+                                  −
+                                </button>
+                                <span className="stepper-val">{ps.stock}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStockChange(partner, ps.productId, 1)}
+                                  aria-label={`Tambah stok ${product.name}`}
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   )}
                 </li>
@@ -233,7 +257,7 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
             })}
           </ul>
         )}
-      </div>
+      </main>
 
       {formOpen && (
         <PartnerForm
@@ -248,7 +272,7 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
 
       {confirmDeleteId && (
         <ConfirmDialog
-          message="Yakin ingin menghapus mitra ini dari database?"
+          message="Yakin ingin menghapus mitra ini dari Firestore database?"
           onCancel={() => setConfirmDeleteId(null)}
           onConfirm={() => handleDelete(confirmDeleteId)}
         />

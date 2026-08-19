@@ -56,7 +56,10 @@ export default function App() {
       {adminMode ? (
         <AdminPanel onDataChanged={handleDataChanged} onLogout={handleLogout} />
       ) : (
-        <PublicDirectory refreshKey={refreshKey} />
+        <PublicDirectory
+          refreshKey={refreshKey}
+          onOpenAdmin={() => setPinModalOpen(true)}
+        />
       )}
 
       {pinModalOpen && (

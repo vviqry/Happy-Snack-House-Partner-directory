@@ -17,42 +17,53 @@ export default function AdminModal({ onSuccess, onClose }: Props) {
       onSuccess()
       return
     }
-    setError('PIN salah.')
+    setError('PIN salah. Silakan coba lagi.')
     setShake(true)
     setPin('')
     setTimeout(() => setShake(false), 350)
   }
 
   return (
-    <div className="admin-modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={onClose}>
       <form
         className={`admin-pin-modal${shake ? ' is-shaking' : ''}`}
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <div className="admin-lock-icon" aria-hidden="true">
-          🔐
+        <div className="modal-header-row">
+          <div className="admin-lock-badge" aria-hidden="true">
+            🔐
+          </div>
+          <button type="button" className="icon-btn-close" onClick={onClose} aria-label="Tutup">
+            ✕
+          </button>
         </div>
-        <h2 className="admin-pin-title">Admin Access</h2>
-        <p className="admin-pin-sub">Masukkan PIN Admin</p>
-        <input
-          className="pin-input"
-          type="password"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={12}
-          autoFocus
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-          aria-label="PIN Admin"
-        />
-        <p className="pin-error">{error}</p>
-        <button type="submit" className="btn-primary">
-          Masuk
-        </button>
-        <button type="button" className="btn-secondary" onClick={onClose}>
-          Batal
-        </button>
+
+        <h2 className="admin-pin-title">Akses Admin</h2>
+        <p className="admin-pin-sub">Masukkan PIN Admin untuk mengelola data mitra & stok.</p>
+
+        <div className="pin-input-group">
+          <input
+            className="pin-input"
+            type="password"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={12}
+            placeholder="••••••••"
+            autoFocus
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            aria-label="PIN Admin"
+          />
+        </div>
+
+        {error && <p className="pin-error">{error}</p>}
+
+        <div className="modal-form-actions">
+          <button type="submit" className="action-btn-primary full-width">
+            Masuk ke Admin
+          </button>
+        </div>
       </form>
     </div>
   )
