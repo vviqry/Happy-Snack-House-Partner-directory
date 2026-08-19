@@ -17,20 +17,13 @@ export default function ProductStockList({ partner }: Props) {
 
   return (
     <div className="toples-panel">
-      <p className="toples-heading">🍬 Produk & Toples Tersedia</p>
-      <div className="toples-list">
-        {inStock.map((item) => (
-          <div className="toples-row" key={item.productId}>
-            <div className="toples-left">
-              <span className="toples-thumb" aria-hidden="true">
-                🍬
-              </span>
-              <span className="toples-name">{item.product!.name}</span>
-            </div>
-            <span className="toples-count">{item.stock} Toples</span>
-          </div>
-        ))}
-      </div>
+      {inStock.map((item) => (
+        <div className="toples-row" key={item.productId}>
+          <span className="toples-thumb" aria-hidden="true">🍬</span>
+          <span className="toples-name">{item.product!.name}</span>
+          <span className="toples-count"><strong>{item.stock}</strong> Toples</span>
+        </div>
+      ))}
     </div>
   )
 }

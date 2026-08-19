@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Partner, PartnerDraft } from '../types/partner'
 import PartnerForm from '../components/PartnerForm'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { getProductById } from '../services/productService'
+import { getProductById, subscribeToProducts, seedProducts } from '../services/productService'
 import {
   addPartner,
   deletePartner,
@@ -37,6 +37,13 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
     })
     return () => unsubscribe()
   }, [onDataChanged])
+
+  // Subscribe to Firestore products & seed if empty
+  useEffect(() => {
+    seedProducts().catch(console.error)
+    const unsub = subscribeToProducts()
+    return () => unsub()
+  }, [])
 
   async function handleSave(draft: PartnerDraft) {
     try {

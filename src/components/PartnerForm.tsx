@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Partner, PartnerDraft } from '../types/partner'
-import { getActiveProducts } from '../services/productService'
+import type { Product } from '../types/product'
+import { subscribeToProducts, addProduct } from '../services/productService'
 
 interface Props {
   initial?: Partner
@@ -9,7 +10,10 @@ interface Props {
 }
 
 export default function PartnerForm({ initial, onSave, onClose }: Props) {
-  const products = getActiveProducts()
+  const [products, setProducts] = useState<Product[]>([])
+  const [showAddProduct, setShowAddProduct] = useState(false)
+  const [newProductName, setNewProductName] = useState('')
+  const [addingProduct, setAddingProduct] = useState(false)
 
   const [name, setName] = useState(initial?.name ?? '')
   const [area, setArea] = useState(initial?.area ?? '')
@@ -25,6 +29,14 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
     () => new Set((initial?.products ?? []).map((p) => p.productId))
   )
   const [error, setError] = useState('')
+
+  // Subscribe to products from Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToProducts((list) => {
+      setProducts(list.filter((p) => p.active))
+    })
+    return () => unsubscribe()
+  }, [])
 
   function toggleProduct(id: string) {
     setSelected((prev) => {
@@ -43,6 +55,21 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
 
   function setStock(id: string, value: number) {
     setStockByProduct((prev) => ({ ...prev, [id]: Math.max(0, value) }))
+  }
+
+  async function handleAddProduct() {
+    if (!newProductName.trim()) return
+    setAddingProduct(true)
+    try {
+      await addProduct(newProductName.trim())
+      setNewProductName('')
+      setShowAddProduct(false)
+    } catch (err) {
+      console.error('Gagal menambahkan produk:', err)
+      alert('Gagal menambahkan produk baru.')
+    } finally {
+      setAddingProduct(false)
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -90,7 +117,7 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
         </div>
 
         <h2 className="modal-title">{initial ? 'Edit Data Mitra' : 'Tambah Mitra Baru'}</h2>
-        <p className="modal-sub-title">Lengkapi informasi toko dan jumlah stok toples yang tersedia.</p>
+        <p className="modal-sub-title">Lengkapi informasi toko dan jumlah stok toples.</p>
 
         <div className="form-fields-container">
           <div className="field">
@@ -143,8 +170,8 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
               {products.map((p) => {
                 const isChecked = selected.has(p.id)
                 return (
-                  <div className={`product-picker-row ${isChecked ? 'is-selected' : ''}`} key={p.id}>
-                    <label className="checkbox-label">
+                  <div className="product-picker-row" key={p.id}>
+                    <label className="product-picker-left">
                       <input
                         type="checkbox"
                         checked={isChecked}
@@ -152,22 +179,60 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
                       />
                       <span className="product-picker-name">{p.name}</span>
                     </label>
-                    {isChecked && (
-                      <div className="stock-input-wrapper">
-                        <input
-                          type="number"
-                          min={0}
-                          value={stockByProduct[p.id] ?? 0}
-                          onChange={(e) => setStock(p.id, Number(e.target.value))}
-                          aria-label={`Stok toples ${p.name}`}
-                          className="stock-num-input"
-                        />
-                        <span className="stock-unit">Toples</span>
-                      </div>
-                    )}
+                    <div className="product-picker-right">
+                      <input
+                        type="number"
+                        min={0}
+                        value={stockByProduct[p.id] ?? 0}
+                        onChange={(e) => setStock(p.id, Number(e.target.value))}
+                        disabled={!isChecked}
+                        aria-label={`Stok toples ${p.name}`}
+                        className="stock-num-input"
+                      />
+                      <span className="stock-unit">Toples</span>
+                    </div>
                   </div>
                 )
               })}
+
+              {/* Add Product inline form */}
+              {showAddProduct ? (
+                <div className="add-product-inline">
+                  <input
+                    type="text"
+                    placeholder="Nama produk baru..."
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    autoFocus
+                    className="add-product-input"
+                  />
+                  <div className="add-product-btns">
+                    <button
+                      type="button"
+                      className="action-btn-secondary small"
+                      onClick={() => { setShowAddProduct(false); setNewProductName('') }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      className="action-btn-primary small"
+                      onClick={handleAddProduct}
+                      disabled={addingProduct || !newProductName.trim()}
+                    >
+                      {addingProduct ? 'Menyimpan...' : 'Simpan Produk'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="add-product-btn"
+                  onClick={() => setShowAddProduct(true)}
+                >
+                  + Tambah Produk
+                </button>
+              )}
             </div>
           </div>
         </div>

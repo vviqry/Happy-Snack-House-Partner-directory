@@ -6,10 +6,9 @@ import { subscribeToPartners, totalStock } from '../services/partnerService'
 
 interface Props {
   refreshKey?: number
-  onOpenAdmin?: () => void
 }
 
-export default function PublicDirectory({ onOpenAdmin }: Props) {
+export default function PublicDirectory(_props: Props) {
   const [query, setQuery] = useState('')
   const [selectedArea, setSelectedArea] = useState<string>('Semua')
   const [active, setActive] = useState<Partner | null>(null)
@@ -24,14 +23,12 @@ export default function PublicDirectory({ onOpenAdmin }: Props) {
     return () => unsubscribe()
   }, [])
 
-  // Toko yang ditampilkan ke publik: aktif dan memiliki stok > 0
   const visiblePartners = useMemo(() => {
     return allPartners
       .filter((p) => p.active && totalStock(p) > 0)
       .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
   }, [allPartners])
 
-  // Extract distinct areas for filter chips
   const areas = useMemo(() => {
     const set = new Set<string>()
     for (const p of visiblePartners) {
@@ -61,55 +58,43 @@ export default function PublicDirectory({ onOpenAdmin }: Props) {
 
   return (
     <div className="app-shell brand-theme">
-      {/* Top Banner */}
+      {/* Clean brand header — no admin elements */}
       <header className="top-nav-banner">
         <div className="top-nav-content">
           <div className="brand-logo-badge">
             <span className="brand-icon">🏠</span>
             <span className="brand-title">
-              <strong>Happy Snack House</strong> — Direktori Mitra
+              <strong>Happy Snack House</strong>
             </span>
           </div>
-          {onOpenAdmin && (
-            <button
-              className="top-nav-admin-btn"
-              onClick={onOpenAdmin}
-              title="Akses Admin (atau tekan Ctrl+X)"
-            >
-              🔐 Admin
-            </button>
-          )}
         </div>
       </header>
 
       <main className="container">
-        {/* Hero Section with 3D Mascot */}
+        {/* Hero — customer-facing with brand logo */}
         <section className="hero-section">
-          <div className="mascot-wrapper">
+          <div className="logo-wrapper">
             <img
-              src="/assets/mascot.jpg"
-              alt="Happy Snack House Mascot"
-              className="mascot-img"
+              src="/assets/logo.jpg"
+              alt="Happy Snack House"
+              className="hero-logo"
             />
           </div>
           <h1 className="hero-title">
-            Halo Mitra Happy! <span className="wave-hand">👋</span>
+            Lagi Cari Fruity Candy? <span className="candy-bounce">🍬</span>
           </h1>
           <p className="hero-subtitle">
-            Cari toko & warung mitra resmi penyedia camilan Happy Snack House terdekat.
+            Temukan toko & warung terdekat yang menyediakan camilan Happy Snack House.
           </p>
 
-          {/* Search Bar */}
           <div className="search-box-wrapper">
-            <span className="search-icon" aria-hidden="true">
-              🔍
-            </span>
+            <span className="search-icon" aria-hidden="true">🔍</span>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari nama toko, pasar, atau wilayah..."
-              aria-label="Cari toko mitra"
+              placeholder="Cari nama toko atau wilayah..."
+              aria-label="Cari toko"
               className="search-input"
             />
             {query && (
@@ -123,7 +108,6 @@ export default function PublicDirectory({ onOpenAdmin }: Props) {
             )}
           </div>
 
-          {/* Area Filter Chips */}
           {areas.length > 2 && (
             <div className="filter-chips-row">
               {areas.map((area) => (
@@ -139,19 +123,19 @@ export default function PublicDirectory({ onOpenAdmin }: Props) {
           )}
         </section>
 
-        {/* Directory Section */}
+        {/* Store directory */}
         <section className="directory-section">
           <div className="directory-header-row">
-            <h2 className="section-heading">Daftar Toko Mitra</h2>
+            <h2 className="section-heading">Toko Terdekat</h2>
             <span className="partner-count-badge">
-              {filtered.length} Toko Tersedia
+              {filtered.length} Toko
             </span>
           </div>
 
           {loading ? (
             <div className="state-card">
               <div className="loading-spinner" />
-              <p>Menghubungkan ke database...</p>
+              <p>Memuat data toko...</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="state-card empty">
@@ -160,13 +144,13 @@ export default function PublicDirectory({ onOpenAdmin }: Props) {
               </span>
               <h3>
                 {visiblePartners.length === 0
-                  ? 'Belum ada toko yang terdaftar'
+                  ? 'Toko belum tersedia'
                   : 'Toko tidak ditemukan'}
               </h3>
               <p>
                 {visiblePartners.length === 0
-                  ? 'Data toko sedang dipersiapkan oleh tim Happy Snack House.'
-                  : `Tidak ada hasil untuk pencarian "${query}". Coba kata kunci lain.`}
+                  ? 'Sedang menyiapkan daftar toko untukmu. Cek lagi nanti ya!'
+                  : `Tidak ada hasil untuk "${query}". Coba kata kunci lain.`}
               </p>
             </div>
           ) : (
@@ -179,10 +163,9 @@ export default function PublicDirectory({ onOpenAdmin }: Props) {
         </section>
       </main>
 
-      {/* Brand Footer */}
       <footer className="site-footer">
         <p>
-          Terima kasih telah menjadi bagian dari keluarga <strong>Happy Snack House</strong>.{' '}
+          <strong>Happy Snack House</strong> — Rumahnya Camilan & Momen Ceria!{' '}
           <span className="heart-icon">💛</span>
         </p>
       </footer>

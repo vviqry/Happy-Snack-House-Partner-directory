@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function PartnerModal({ partner, onClose }: Props) {
-  const [toplesOpen, setToplesOpen] = useState(true)
+  const [toplesOpen, setToplesOpen] = useState(false)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -28,7 +28,7 @@ export default function PartnerModal({ partner, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header-row">
-          <div className="modal-badge-icon" aria-hidden="true">🏠</div>
+          <div />
           <button className="icon-btn-close" onClick={onClose} aria-label="Tutup">
             ✕
           </button>
@@ -36,7 +36,6 @@ export default function PartnerModal({ partner, onClose }: Props) {
 
         <h2 className="modal-title">{partner.name}</h2>
         <p className="modal-area">📍 {partner.area}</p>
-        {partner.address && <p className="modal-address">{partner.address}</p>}
 
         <div className="modal-actions">
           {partner.mapsUrl && (
@@ -47,7 +46,7 @@ export default function PartnerModal({ partner, onClose }: Props) {
               rel="noopener noreferrer"
             >
               <span className="action-icon" aria-hidden="true">📍</span>
-              Buka Google Maps
+              Rute Google Maps
             </a>
           )}
           <button
@@ -57,7 +56,7 @@ export default function PartnerModal({ partner, onClose }: Props) {
             aria-expanded={toplesOpen}
           >
             <span className="action-icon" aria-hidden="true">📦</span>
-            {toplesOpen ? 'Sembunyikan Stok' : 'Lihat Stok Toples'}
+            Toples
           </button>
         </div>
 
