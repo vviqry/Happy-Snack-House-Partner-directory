@@ -33,41 +33,43 @@ export default function PartnerModal({ partner, onClose }: Props) {
         aria-label={partner.name}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header-row">
-          <div className="modal-header-info">
+        {/* Corner Close Button */}
+        <button className="icon-btn-close modal-close-corner" onClick={onClose} aria-label="Tutup">
+          ✕
+        </button>
+
+        {/* Header with Title, Area & Nav Button */}
+        <div className="modal-header-block">
+          <div className="modal-header-text">
             <h2 className="modal-title">{partner.name}</h2>
             <p className="modal-area">📍 {partner.area}</p>
           </div>
-          <div className="modal-header-actions">
-            {directionsUrl && (
-              <a
-                className="nav-route-btn"
-                href={directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Buka Rute Navigasi di Google Maps"
+
+          {directionsUrl && (
+            <a
+              className="nav-route-btn"
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Buka Rute Navigasi di Google Maps"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="nav-icon"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="nav-icon"
-                >
-                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
-                </svg>
-                <span>Buka Rute Navigasi</span>
-              </a>
-            )}
-            <button className="icon-btn-close" onClick={onClose} aria-label="Tutup">
-              ✕
-            </button>
-          </div>
+                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+              </svg>
+              <span>Buka Rute Navigasi</span>
+            </a>
+          )}
         </div>
 
         {/* Embedded Map / Street View Iframe */}
@@ -83,7 +85,7 @@ export default function PartnerModal({ partner, onClose }: Props) {
             />
             <div className="modal-map-footer">
               <span className="map-footer-hint">
-                💡 Klik <strong>"Buka Rute Navigasi"</strong> untuk panduan rute GPS langsung dari lokasi Anda.
+                💡 Klik <strong>"Buka Rute Navigasi"</strong> untuk panduan GPS dari lokasi Anda.
               </span>
               {directionsUrl && (
                 <a
