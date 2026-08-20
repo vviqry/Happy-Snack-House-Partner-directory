@@ -634,17 +634,8 @@ button {
 }
 
 .modal-header-block {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   padding-right: 38px;
-}
-
-.modal-header-text {
-  flex: 1;
-  min-width: 0;
 }
 
 .modal-title {
@@ -662,6 +653,14 @@ button {
   font-weight: 600;
   color: var(--brand-brown-body);
   line-height: 1.35;
+}
+
+.modal-nav-center-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 8px 0 14px;
 }
 
 .modal-address {
@@ -686,29 +685,29 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   background: #4f46e5;
   background-image: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.82rem;
-  padding: 8px 14px;
+  font-size: 0.88rem;
+  padding: 10px 20px;
   border-radius: var(--radius-pill);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
   text-decoration: none;
   transition: all 0.2s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
+  width: 100%;
+  text-align: center;
 }
 
 .nav-route-btn:hover {
   background-image: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
 }
 
 .nav-route-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 
 .nav-route-btn .nav-icon {
@@ -785,15 +784,8 @@ button {
   }
 
   .modal-header-block {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
     padding-right: 32px;
-    margin-bottom: 10px;
-  }
-
-  .modal-header-text {
-    width: 100%;
+    margin-bottom: 6px;
   }
 
   .modal-title {
@@ -804,11 +796,15 @@ button {
     font-size: 0.86rem;
   }
 
+  .modal-nav-center-row {
+    margin: 6px 0 12px;
+  }
+
   .nav-route-btn {
     width: 100%;
     justify-content: center;
-    padding: 9px 14px;
-    font-size: 0.84rem;
+    padding: 10px 16px;
+    font-size: 0.86rem;
   }
 
   .modal-map-iframe {

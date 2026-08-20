@@ -38,14 +38,15 @@ export default function PartnerModal({ partner, onClose }: Props) {
           ✕
         </button>
 
-        {/* Header with Title, Area & Nav Button */}
+        {/* Header with Title & Area */}
         <div className="modal-header-block">
-          <div className="modal-header-text">
-            <h2 className="modal-title">{partner.name}</h2>
-            <p className="modal-area">📍 {partner.area}</p>
-          </div>
+          <h2 className="modal-title">{partner.name}</h2>
+          <p className="modal-area">📍 {partner.area}</p>
+        </div>
 
-          {directionsUrl && (
+        {/* Centered Navigation Button */}
+        {directionsUrl && (
+          <div className="modal-nav-center-row">
             <a
               className="nav-route-btn"
               href={directionsUrl}
@@ -69,8 +70,8 @@ export default function PartnerModal({ partner, onClose }: Props) {
               </svg>
               <span>Buka Rute Navigasi</span>
             </a>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Embedded Map / Street View Iframe */}
         {parsedMap.hasEmbed && parsedMap.embedUrl && (
