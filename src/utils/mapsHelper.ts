@@ -6,6 +6,11 @@ export interface ParsedMap {
   coords: { lat: number; lng: number } | null
 }
 
+/** Check if a URL is a Google Maps embed URL (not openable in browser tab) */
+function isEmbedUrl(url: string): boolean {
+  return url.includes('/maps/embed') || url.includes('output=embed')
+}
+
 /**
  * Smart Parser for Google Maps inputs:
  * - Supports full <iframe>...</iframe> tags (Standard Maps & Street View 360)
@@ -125,16 +130,43 @@ export function parseMapInput(input?: string): ParsedMap {
     embedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=id&z=17&output=embed`
   }
 
-  // 4. Determine Navigation URL
+  // 4. Determine Navigation URL — NEVER use embed URLs
   let navigationUrl = ''
   if (coords) {
+    // Best case: we have coordinates → build a proper directions URL
     navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`
   } else if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    navigationUrl = raw
-  } else if (srcUrl) {
-    navigationUrl = srcUrl
-  } else {
-    navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(raw)}`
+    // Raw input is a URL — use it only if it's NOT an embed URL
+    if (!isEmbedUrl(raw)) {
+      navigationUrl = raw
+    }
+  }
+
+  // Fallback: if we still don't have a navigation URL
+  if (!navigationUrl) {
+    if (srcUrl && !isEmbedUrl(srcUrl)) {
+      // srcUrl is a non-embed URL (unlikely but handle it)
+      navigationUrl = srcUrl
+    } else if (srcUrl && isEmbedUrl(srcUrl)) {
+      // Convert embed URL → regular Google Maps URL by swapping /embed to /place
+      const pbMatch = srcUrl.match(/[?&]pb=([^&]+)/)
+      if (pbMatch) {
+        navigationUrl = `https://www.google.com/maps?pb=${pbMatch[1]}`
+      } else {
+        // Strip embed params and open as regular maps
+        navigationUrl = srcUrl
+          .replace('/maps/embed?', '/maps?')
+          .replace('&output=embed', '')
+          .replace('?output=embed&', '?')
+          .replace('?output=embed', '')
+      }
+    } else {
+      // Last resort: use raw text (strip HTML tags) as a Google Maps search
+      const cleanText = raw.replace(/<[^>]+>/g, '').trim()
+      if (cleanText) {
+        navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanText)}`
+      }
+    }
   }
 
   return {
@@ -145,3 +177,4 @@ export function parseMapInput(input?: string): ParsedMap {
     coords,
   }
 }
+
