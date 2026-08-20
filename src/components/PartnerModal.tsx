@@ -1,46 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Partner } from '../types/partner'
 import ProductStockList from './ProductStockList'
-import { parseMapInput } from '../utils/mapsHelper'
+import { parseMapInput, getDirectionsUrl } from '../utils/mapsHelper'
 
 interface Props {
   partner: Partner
   onClose: () => void
 }
 
-/**
- * Build the best possible Google Maps directions URL.
- * Priority:
- * 1. Coordinates (from iframe / embed / coordinate string) → exact lat,lng
- * 2. Partner address → text-based directions search
- * 3. Partner name + area → text-based directions search
- * 4. Raw mapsUrl (share link) → at least opens Google Maps
- */
-function getDirectionsUrl(partner: Partner, parsedMap: ReturnType<typeof parseMapInput>): string {
-  // Best: exact coordinates
-  if (parsedMap.coords) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${parsedMap.coords.lat},${parsedMap.coords.lng}`
-  }
-
-  // Good: use partner address for directions
-  if (partner.address && partner.address.trim()) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(partner.address.trim())}`
-  }
-
-  // OK: use partner name + area
-  const destination = `${partner.name}, ${partner.area}`.trim()
-  if (destination) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
-  }
-
-  // Fallback: raw mapsUrl or parsedMap navigationUrl
-  return parsedMap.navigationUrl || partner.mapsUrl || ''
-}
-
 export default function PartnerModal({ partner, onClose }: Props) {
   const [toplesOpen, setToplesOpen] = useState(false)
   const parsedMap = parseMapInput(partner.mapsUrl)
-  const directionsUrl = useMemo(() => getDirectionsUrl(partner, parsedMap), [partner, parsedMap])
+  const directionsUrl = useMemo(
+    () => getDirectionsUrl(partner.mapsUrl, partner.address || `${partner.name}, ${partner.area}`),
+    [partner]
+  )
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

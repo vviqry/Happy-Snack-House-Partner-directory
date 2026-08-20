@@ -1,3 +1,14 @@
+/**
+ * Smart Google Maps Helper Utility (proven pattern from Fruity Candy)
+ * Parses either <iframe> HTML (Street View or Map embed) OR raw Coordinate Strings.
+ * Returns an object containing both the visual preview iframeUrl AND parsed GPS coordinates.
+ */
+
+export interface MapParseResult {
+  iframeUrl: string
+  coordinates: { lat: number; lng: number } | null
+}
+
 export interface ParsedMap {
   raw: string
   embedUrl: string | null
@@ -6,17 +17,165 @@ export interface ParsedMap {
   coords: { lat: number; lng: number } | null
 }
 
-/** Check if a URL is a Google Maps embed URL (not openable in browser tab) */
-function isEmbedUrl(url: string): boolean {
-  return url.includes('/maps/embed') || url.includes('output=embed')
+/**
+ * Extracts latitude and longitude from any Google Maps string format:
+ * - Street View / Embed pb parameters (!1d-0.22914!2d100.63125 or !3d-0.22914!2d100.63125 or !2d100.63125!3d-0.22914)
+ * - @lat,lng URLs
+ * - q=lat,lng, ll=lat,lng, or destination=lat,lng query params
+ * - /maps/dir/lat,lng or /maps/dir/.../lat,lng
+ * - Raw coordinate string (e.g. "-0.22914, 100.63125")
+ */
+export function extractCoordinates(input: string): { lat: number; lng: number } | null {
+  if (!input) return null
+
+  // 1. Match Street View or Embed pb params (!1d or !3d or !4d for lat, !2d for lng)
+  const pbLatMatch = input.match(/!(?:1d|3d|4d)(-?\d+\.\d+)/)
+  const pbLngMatch = input.match(/!2d(-?\d+\.\d+)/)
+  if (pbLatMatch && pbLngMatch) {
+    const val1 = parseFloat(pbLatMatch[1])
+    const val2 = parseFloat(pbLngMatch[1])
+    // Determine which is lat (-90 to 90) and which is lng (-180 to 180)
+    if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
+      return { lat: val1, lng: val2 }
+    } else if (Math.abs(val2) <= 90 && Math.abs(val1) <= 180) {
+      return { lat: val2, lng: val1 }
+    }
+  }
+
+  // 1b. Check for standard place pin pb: !3d<lat>!4d<lng>
+  const pb3d4d = input.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+  if (pb3d4d) {
+    const lat = parseFloat(pb3d4d[1])
+    const lng = parseFloat(pb3d4d[2])
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng }
+    }
+  }
+
+  // 2. Match @lat,lng in Google Maps URLs (e.g. @-0.22914,100.63125)
+  const atMatch = input.match(/@(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/)
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1])
+    const lng = parseFloat(atMatch[2])
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng }
+    }
+  }
+
+  // 3. Match q=lat,lng, ll=lat,lng, or destination=lat,lng
+  const qMatch = input.match(/(?:q|ll|destination)=(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/)
+  if (qMatch) {
+    const lat = parseFloat(qMatch[1])
+    const lng = parseFloat(qMatch[2])
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng }
+    }
+  }
+
+  // 4. Match /maps/dir/... destination coordinates
+  if (input.includes('/maps/dir/')) {
+    const dirMatches = [...input.matchAll(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/g)]
+    if (dirMatches.length > 0) {
+      // In directions URL, take the destination pair (the second pair if 2 pairs exist)
+      const match = dirMatches[dirMatches.length > 1 ? 1 : 0]
+      const lat = parseFloat(match[1])
+      const lng = parseFloat(match[2])
+      if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        return { lat, lng }
+      }
+    }
+  }
+
+  // 5. Match raw coordinate string: e.g. "-0.22914, 100.63125" or "-0.22914 100.63125"
+  const rawMatch = input.match(/(-?\d+\.\d+)\s*[\s,]\s*(-?\d+\.\d+)/)
+  if (rawMatch) {
+    const lat = parseFloat(rawMatch[1])
+    const lng = parseFloat(rawMatch[2])
+    if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng }
+    }
+  }
+
+  return null
 }
 
 /**
- * Smart Parser for Google Maps inputs:
- * - Supports full <iframe>...</iframe> tags (Standard Maps & Street View 360)
- * - Supports raw embed URLs (https://www.google.com/maps/embed?...)
- * - Supports Google Maps place / share URLs (https://maps.app.goo.gl/..., @lat,lng)
- * - Supports plain coordinates string ("-0.175215, 100.588168")
+ * Smart Logic Parser:
+ * - If input is <iframe>: extracts src for iframeUrl AND extracts (lat, lng) for coordinates.
+ * - If input is Coordinates: stores (lat, lng) AND dynamically generates iframeUrl.
+ * Returns { iframeUrl, coordinates }
+ */
+export function parseMapInputDetails(input: string): MapParseResult {
+  const trimmed = (input || '').trim()
+
+  if (!trimmed) {
+    return { iframeUrl: '', coordinates: null }
+  }
+
+  // Extract coordinates
+  const coords = extractCoordinates(trimmed)
+
+  // Determine visual iframeUrl
+  let iframeUrl = ''
+
+  const srcMatch = trimmed.match(/src=["']([^"']+)["']/)
+  if (srcMatch) {
+    // Full <iframe> tag provided by user
+    iframeUrl = srcMatch[1]
+  } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // Direct URL provided
+    if (trimmed.includes('google.com/maps/embed') || trimmed.includes('output=embed')) {
+      iframeUrl = trimmed
+    } else if (coords) {
+      iframeUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&output=embed`
+    } else {
+      iframeUrl = trimmed
+    }
+  } else if (coords) {
+    // Raw coordinates provided -> generate dynamic Google Maps embed iframeUrl
+    iframeUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&output=embed`
+  } else {
+    // Fallback query embed
+    iframeUrl = `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&output=embed`
+  }
+
+  return {
+    iframeUrl,
+    coordinates: coords,
+  }
+}
+
+/**
+ * Generates direct Turn-by-Turn GPS Navigation URL using parsed coordinates.
+ * Format: https://www.google.com/maps/dir/?api=1&destination=lat,lng
+ * Fallback to locationName query if coordinates are null.
+ */
+export function getDirectionsUrl(input: string, locationName: string = ''): string {
+  const result = parseMapInputDetails(input)
+  if (result.coordinates) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${result.coordinates.lat},${result.coordinates.lng}`
+  }
+
+  if (locationName && locationName.trim()) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(locationName.trim())}`
+  }
+
+  if (result.iframeUrl && !result.iframeUrl.includes('/maps/embed')) {
+    return result.iframeUrl
+  }
+
+  return 'https://www.google.com/maps'
+}
+
+/**
+ * Extracts visual iframe src for embed rendering.
+ */
+export function getIframeSrc(input: string): string {
+  return parseMapInputDetails(input).iframeUrl
+}
+
+/**
+ * Compatibility wrapper for existing codebase
  */
 export function parseMapInput(input?: string): ParsedMap {
   if (!input || typeof input !== 'string' || !input.trim()) {
@@ -29,166 +188,18 @@ export function parseMapInput(input?: string): ParsedMap {
     }
   }
 
-  const raw = input.trim()
-  let srcUrl: string | null = null
-
-  // 1. Check for <iframe> tag
-  const iframeSrcMatch = raw.match(/<iframe[^>]+src=["']([^"']+)["']/i)
-  if (iframeSrcMatch && iframeSrcMatch[1]) {
-    srcUrl = iframeSrcMatch[1]
-  } else if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    srcUrl = raw
-  }
-
-  // 2. Extract coordinates
-  let coords: { lat: number; lng: number } | null = null
-
-  // A. Coordinates from string directly (e.g. "-0.175215, 100.588168")
-  const plainCoordMatch = raw.match(/^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$/)
-  if (plainCoordMatch) {
-    const lat = parseFloat(plainCoordMatch[1])
-    const lng = parseFloat(plainCoordMatch[2])
-    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      coords = { lat, lng }
-    }
-  }
-
-  // B. Coordinates from Google Maps embed / Street View URL
-  if (!coords && srcUrl) {
-    // Check for standard place pin !3d<lat>!4d<lng>
-    const pb3d4d = srcUrl.match(/!3d([+-]?\d+(?:\.\d+)?)!4d([+-]?\d+(?:\.\d+)?)/)
-    if (pb3d4d) {
-      const lat = parseFloat(pb3d4d[1])
-      const lng = parseFloat(pb3d4d[2])
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        coords = { lat, lng }
-      }
-    }
-
-    // Check for !2d<lng>!3d<lat> (Street View / Maps viewport)
-    if (!coords) {
-      const pb2d3d = srcUrl.match(/!2d([+-]?\d+(?:\.\d+)?)!3d([+-]?\d+(?:\.\d+)?)/)
-      if (pb2d3d) {
-        const val1 = parseFloat(pb2d3d[1])
-        const val2 = parseFloat(pb2d3d[2])
-        if (Math.abs(val1) <= 180 && Math.abs(val2) <= 90) {
-          coords = { lat: val2, lng: val1 }
-        } else if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
-          coords = { lat: val1, lng: val2 }
-        }
-      }
-    }
-
-    if (!coords) {
-      const pb3d2d = srcUrl.match(/!3d([+-]?\d+(?:\.\d+)?)!2d([+-]?\d+(?:\.\d+)?)/)
-      if (pb3d2d) {
-        const val1 = parseFloat(pb3d2d[1])
-        const val2 = parseFloat(pb3d2d[2])
-        if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
-          coords = { lat: val1, lng: val2 }
-        }
-      }
-    }
-
-    // C. Coordinates from @lat,lng in URL
-    if (!coords) {
-      const atMatch = srcUrl.match(/@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)/)
-      if (atMatch) {
-        const lat = parseFloat(atMatch[1])
-        const lng = parseFloat(atMatch[2])
-        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          coords = { lat, lng }
-        }
-      }
-    }
-
-    // D. Coordinates from query params (q=lat,lng or destination=lat,lng or ll=lat,lng)
-    if (!coords) {
-      const queryCoordMatch = srcUrl.match(
-        /[?&](?:q|destination|ll|center)=([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)/
-      )
-      if (queryCoordMatch) {
-        const lat = parseFloat(queryCoordMatch[1])
-        const lng = parseFloat(queryCoordMatch[2])
-        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          coords = { lat, lng }
-        }
-      }
-    }
-
-    // E. Coordinates from /maps/dir/... URLs (Google Maps Directions)
-    if (!coords && srcUrl.includes('/maps/dir/')) {
-      const dirMatches = [...srcUrl.matchAll(/([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)/g)]
-      if (dirMatches.length > 0) {
-        // Take the destination coordinate (last coordinate pair before viewport /@)
-        const match = dirMatches[dirMatches.length > 1 ? 1 : 0]
-        const lat = parseFloat(match[1])
-        const lng = parseFloat(match[2])
-        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          coords = { lat, lng }
-        }
-      }
-    }
-  }
-
-  // 3. Determine Embed URL
-  let embedUrl: string | null = null
-  if (
-    srcUrl &&
-    (srcUrl.includes('google.com/maps/embed') ||
-      srcUrl.includes('output=embed') ||
-      srcUrl.includes('maps.google.com/maps?'))
-  ) {
-    embedUrl = srcUrl
-  } else if (coords) {
-    embedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=id&z=17&output=embed`
-  }
-
-  // 4. Determine Navigation URL — NEVER use embed URLs
-  let navigationUrl = ''
-  if (coords) {
-    // Best case: we have coordinates → build a proper directions URL
-    navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`
-  } else if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    // Raw input is a URL — use it only if it's NOT an embed URL
-    if (!isEmbedUrl(raw)) {
-      navigationUrl = raw
-    }
-  }
-
-  // Fallback: if we still don't have a navigation URL
-  if (!navigationUrl) {
-    if (srcUrl && !isEmbedUrl(srcUrl)) {
-      // srcUrl is a non-embed URL (unlikely but handle it)
-      navigationUrl = srcUrl
-    } else if (srcUrl && isEmbedUrl(srcUrl)) {
-      // Convert embed URL → regular Google Maps URL by swapping /embed to /place
-      const pbMatch = srcUrl.match(/[?&]pb=([^&]+)/)
-      if (pbMatch) {
-        navigationUrl = `https://www.google.com/maps?pb=${pbMatch[1]}`
-      } else {
-        // Strip embed params and open as regular maps
-        navigationUrl = srcUrl
-          .replace('/maps/embed?', '/maps?')
-          .replace('&output=embed', '')
-          .replace('?output=embed&', '?')
-          .replace('?output=embed', '')
-      }
-    } else {
-      // Last resort: use raw text (strip HTML tags) as a Google Maps search
-      const cleanText = raw.replace(/<[^>]+>/g, '').trim()
-      if (cleanText) {
-        navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanText)}`
-      }
-    }
-  }
+  const trimmed = input.trim()
+  const details = parseMapInputDetails(trimmed)
+  const isEmbed =
+    details.iframeUrl.includes('google.com/maps/embed') ||
+    details.iframeUrl.includes('output=embed') ||
+    trimmed.includes('<iframe')
 
   return {
-    raw,
-    embedUrl,
-    navigationUrl,
-    hasEmbed: !!embedUrl,
-    coords,
+    raw: trimmed,
+    embedUrl: isEmbed ? details.iframeUrl : (details.coordinates ? `https://maps.google.com/maps?q=${details.coordinates.lat},${details.coordinates.lng}&output=embed` : null),
+    navigationUrl: getDirectionsUrl(trimmed),
+    hasEmbed: isEmbed || !!details.coordinates,
+    coords: details.coordinates,
   }
 }
-
