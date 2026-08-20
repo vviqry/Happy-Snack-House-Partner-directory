@@ -115,6 +115,20 @@ export function parseMapInput(input?: string): ParsedMap {
         }
       }
     }
+
+    // E. Coordinates from /maps/dir/... URLs (Google Maps Directions)
+    if (!coords && srcUrl.includes('/maps/dir/')) {
+      const dirMatches = [...srcUrl.matchAll(/([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)/g)]
+      if (dirMatches.length > 0) {
+        // Take the destination coordinate (last coordinate pair before viewport /@)
+        const match = dirMatches[dirMatches.length > 1 ? 1 : 0]
+        const lat = parseFloat(match[1])
+        const lng = parseFloat(match[2])
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          coords = { lat, lng }
+        }
+      }
+    }
   }
 
   // 3. Determine Embed URL

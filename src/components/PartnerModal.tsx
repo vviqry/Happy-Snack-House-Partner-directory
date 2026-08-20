@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Partner } from '../types/partner'
 import ProductStockList from './ProductStockList'
 import { parseMapInput } from '../utils/mapsHelper'
@@ -8,9 +8,39 @@ interface Props {
   onClose: () => void
 }
 
+/**
+ * Build the best possible Google Maps directions URL.
+ * Priority:
+ * 1. Coordinates (from iframe / embed / coordinate string) → exact lat,lng
+ * 2. Partner address → text-based directions search
+ * 3. Partner name + area → text-based directions search
+ * 4. Raw mapsUrl (share link) → at least opens Google Maps
+ */
+function getDirectionsUrl(partner: Partner, parsedMap: ReturnType<typeof parseMapInput>): string {
+  // Best: exact coordinates
+  if (parsedMap.coords) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${parsedMap.coords.lat},${parsedMap.coords.lng}`
+  }
+
+  // Good: use partner address for directions
+  if (partner.address && partner.address.trim()) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(partner.address.trim())}`
+  }
+
+  // OK: use partner name + area
+  const destination = `${partner.name}, ${partner.area}`.trim()
+  if (destination) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+  }
+
+  // Fallback: raw mapsUrl or parsedMap navigationUrl
+  return parsedMap.navigationUrl || partner.mapsUrl || ''
+}
+
 export default function PartnerModal({ partner, onClose }: Props) {
   const [toplesOpen, setToplesOpen] = useState(false)
   const parsedMap = parseMapInput(partner.mapsUrl)
+  const directionsUrl = useMemo(() => getDirectionsUrl(partner, parsedMap), [partner, parsedMap])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -35,10 +65,10 @@ export default function PartnerModal({ partner, onClose }: Props) {
             <p className="modal-area">📍 {partner.area}</p>
           </div>
           <div className="modal-header-actions">
-            {parsedMap.navigationUrl && (
+            {directionsUrl && (
               <a
                 className="nav-route-btn"
-                href={parsedMap.navigationUrl}
+                href={directionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Buka Rute Navigasi di Google Maps"
@@ -81,9 +111,9 @@ export default function PartnerModal({ partner, onClose }: Props) {
               <span className="map-footer-hint">
                 💡 Klik <strong>"Buka Rute Navigasi"</strong> untuk panduan rute GPS langsung dari lokasi Anda.
               </span>
-              {parsedMap.navigationUrl && (
+              {directionsUrl && (
                 <a
-                  href={parsedMap.navigationUrl}
+                  href={directionsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="map-footer-link"
@@ -102,10 +132,10 @@ export default function PartnerModal({ partner, onClose }: Props) {
         )}
 
         <div className={`modal-actions${parsedMap.hasEmbed ? ' is-compact' : ''}`}>
-          {!parsedMap.hasEmbed && parsedMap.navigationUrl && (
+          {!parsedMap.hasEmbed && directionsUrl && (
             <a
               className="action-btn-primary"
-              href={parsedMap.navigationUrl}
+              href={directionsUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -129,4 +159,5 @@ export default function PartnerModal({ partner, onClose }: Props) {
     </div>
   )
 }
+
 
