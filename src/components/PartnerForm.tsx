@@ -8,6 +8,7 @@ import {
   getActiveProducts,
   getProductById,
 } from '../services/productService'
+import { parseMapInput } from '../utils/mapsHelper'
 
 interface Props {
   initial?: Partner
@@ -26,6 +27,8 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
   const [address, setAddress] = useState(initial?.address ?? '')
   const [mapsUrl, setMapsUrl] = useState(initial?.mapsUrl ?? '')
   const [image, setImage] = useState(initial?.image ?? '')
+
+  const parsedMap = parseMapInput(mapsUrl)
 
   // Initialize stock and selected map, resolving legacy product IDs
   const [stockByProduct, setStockByProduct] = useState<Record<string, number>>(() => {
@@ -157,7 +160,7 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
       return
     }
     if (!mapsUrl.trim()) {
-      setError('Google Maps URL wajib diisi.')
+      setError('Peta lokasi / Google Maps wajib diisi.')
       return
     }
 
@@ -222,14 +225,44 @@ export default function PartnerForm({ initial, onSave, onClose }: Props) {
           </div>
 
           <div className="field">
-            <label htmlFor="pf-maps">Google Maps URL *</label>
-            <input
+            <label htmlFor="pf-maps">
+              Peta Lokasi / Street View (Kode &lt;iframe&gt; / Link Maps / Koordinat) *
+            </label>
+            <textarea
               id="pf-maps"
               value={mapsUrl}
               onChange={(e) => setMapsUrl(e.target.value)}
-              placeholder="https://maps.app.goo.gl/..."
+              placeholder="Paste Kode <iframe...> dari Google Maps (termasuk Street View 360°), link Maps, atau koordinat (-0.1752, 100.5881)"
+              rows={3}
               required
             />
+            <span className="field-subtext">
+              💡 <strong>Smart Input:</strong> Bisa paste kode <code>&lt;iframe&gt;</code> dari Google Maps (termasuk Street View 360°), link share Maps, atau string koordinat.
+            </span>
+
+            {/* Live Preview if embedUrl is valid */}
+            {parsedMap.hasEmbed && parsedMap.embedUrl && (
+              <div className="form-map-preview">
+                <div className="map-preview-header">
+                  <span className="preview-badge">👁️ Live Preview Peta / Street View</span>
+                  {parsedMap.coords && (
+                    <span className="preview-coords">
+                      📍 {parsedMap.coords.lat.toFixed(5)}, {parsedMap.coords.lng.toFixed(5)}
+                    </span>
+                  )}
+                </div>
+                <div className="map-preview-frame-wrap">
+                  <iframe
+                    src={parsedMap.embedUrl}
+                    title="Live Preview Lokasi"
+                    className="map-iframe-preview"
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="field">

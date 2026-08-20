@@ -11,13 +11,14 @@ export default function ProductStockList({ partner }: Props) {
   for (const item of partner.products || []) {
     if (!item || item.stock <= 0) continue
     const product = getProductById(item.productId)
-    if (!product) continue
+    const key = product ? product.id : item.productId
+    const name = product ? product.name : (item.productId || 'Camilan')
 
-    const existing = productMap.get(product.id)
+    const existing = productMap.get(key)
     if (existing) {
       existing.stock = Math.max(existing.stock, item.stock)
     } else {
-      productMap.set(product.id, { name: product.name, stock: item.stock })
+      productMap.set(key, { name, stock: item.stock })
     }
   }
 

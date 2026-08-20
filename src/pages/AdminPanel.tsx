@@ -206,7 +206,7 @@ export default function AdminPanel({ onDataChanged, onLogout }: Props) {
                       className={`chip-btn ${expanded ? 'is-active' : ''}`}
                       onClick={() => setExpandedId(expanded ? null : partner.id)}
                     >
-                      📦 {expanded ? 'Tutup Stok' : 'Kelola Stok'}
+                      🥫 {expanded ? 'Tutup Stok' : 'Kelola Stok'}
                     </button>
                     <button
                       className="chip-btn"

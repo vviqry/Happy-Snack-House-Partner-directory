@@ -3,6 +3,7 @@ import type { Partner } from '../types/partner'
 import PartnerCard from '../components/PartnerCard'
 import PartnerModal from '../components/PartnerModal'
 import { subscribeToPartners, totalStock } from '../services/partnerService'
+import { subscribeToProducts } from '../services/productService'
 
 interface Props {
   refreshKey?: number
@@ -16,11 +17,18 @@ export default function PublicDirectory(_props: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = subscribeToPartners((data) => {
+    const unsubProducts = subscribeToProducts(() => {
+      // Refresh partner stock calculations when products update
+      setAllPartners((prev) => [...prev])
+    })
+    const unsubPartners = subscribeToPartners((data) => {
       setAllPartners(data)
       setLoading(false)
     })
-    return () => unsubscribe()
+    return () => {
+      unsubProducts()
+      unsubPartners()
+    }
   }, [])
 
   const visiblePartners = useMemo(() => {

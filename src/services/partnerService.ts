@@ -31,9 +31,7 @@ export function sanitizePartnerProducts(products?: PartnerProductStock[]): Partn
   for (const item of products) {
     if (!item || !item.productId) continue;
     const prod = getProductById(item.productId);
-    if (!prod) continue;
-
-    const canonicalId = prod.id;
+    const canonicalId = prod ? prod.id : item.productId;
     const stock = Math.max(0, Number(item.stock) || 0);
 
     // If duplicate entries exist for the same product, keep the maximum stock value
